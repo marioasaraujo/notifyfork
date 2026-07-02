@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - "v*"
+  # auto-tag.yml pushes the tag using GITHUB_TOKEN, which GitHub excludes
+  # from triggering the "push: tags" event above (anti-loop protection).
+  # workflow_dispatch is exempt from that rule, so auto-tag.yml calls this
+  # explicitly (`gh workflow run publish.yml --ref vX.Y.Z`) after tagging.
+  workflow_dispatch:
 
 jobs:
   build:
