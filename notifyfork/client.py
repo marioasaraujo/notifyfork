@@ -10,50 +10,51 @@ from typing import Any
 
 from celery.result import AsyncResult
 
-from notifyfork.api.routing.event_router import EventRouter, UnroutableEvent
+from notifyfork.core.domain.entities.notification import NotificationChannel, NotificationType
 from notifyfork.core.infrastructure.queue.tasks import dispatch_notification
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["send_event", "UnroutableEvent"]
-
-_router = EventRouter()
+__all__ = ["send"]
 
 
-def send_event(
-    event_type: str,
+def send(
     recipient: str,
+    channel: NotificationChannel | str,
+    template_id: str,
+    notification_type: NotificationType | str,
     context: dict[str, Any] | None = None,
     max_attempts: int = 3,
 ) -> AsyncResult:
     """
-    Resolves event_type to a channel + template and enqueues delivery.
+    Enqueues a notification for delivery.
 
-    Raises UnroutableEvent if event_type has no routing rule, ValueError
-    if recipient is blank or max_attempts is out of range (1-5).
+    You already know the channel and template you want, so this just
+    passes them straight to the queue — no routing table or event
+    catalog to register first.
+
+    Raises ValueError if recipient is blank or max_attempts is out of
+    range (1-5).
     """
     if not recipient or not recipient.strip():
         raise ValueError("recipient cannot be blank")
     if not 1 <= max_attempts <= 5:
         raise ValueError("max_attempts must be between 1 and 5")
 
-    normalized_event_type = event_type.strip().lower().replace(" ", "_")
-    rule = _router.resolve(normalized_event_type)
-
     task = dispatch_notification.delay({
         "recipient": recipient.strip(),
-        "channel": rule.channel.value,
-        "notification_type": rule.notification_type.value,
-        "template_id": rule.template_id,
+        "channel": channel,
+        "notification_type": notification_type,
+        "template_id": template_id,
         "context": context or {},
         "max_attempts": max_attempts,
     })
 
     logger.info(
-        "Event accepted and enqueued",
+        "Notification accepted and enqueued",
         extra={
-            "event_type": normalized_event_type,
-            "channel": rule.channel.value,
+            "channel": channel,
+            "template_id": template_id,
             "task_id": task.id,
             "recipient_hint": recipient[:6] + "***",  # never log full PII
         },

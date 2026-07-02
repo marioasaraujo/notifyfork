@@ -1,4 +1,4 @@
-from notifyfork.client import send_event
-from notifyfork.api.routing.event_router import UnroutableEvent
+from notifyfork.client import send
+from notifyfork.core.infrastructure.container.providers import provider
 
-__all__ = ["send_event", "UnroutableEvent"]
+__all__ = ["send", "provider"]

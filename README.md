@@ -5,7 +5,7 @@
 <h1>📡 NotifyFork</h1>
 
 <p><strong>Provider-agnostic notification gateway for Django.</strong><br/>
-One API. Any channel. Route events to SMS, Email, WhatsApp, Push, and Slack,<br/>
+One API. Any channel. Send to SMS, Email, WhatsApp, Push, and Slack,<br/>
 delivered asynchronously, retried safely, logged in structured JSON.</p>
 
 [![PyPI version](https://img.shields.io/pypi/v/notifyfork?style=flat-square&color=2c5364)](https://pypi.org/project/notifyfork)
@@ -28,9 +28,9 @@ delivered asynchronously, retried safely, logged in structured JSON.</p>
 
 Most systems start with a direct Twilio call somewhere in the codebase. Then another one. Then retry logic gets duplicated. Then someone needs WhatsApp and the whole thing breaks apart.
 
-NotifyFork solves this by treating notifications as a **routing problem, not a provider problem**.
+NotifyFork solves this by treating notifications as a **delivery problem, not a provider problem**.
 
-You fire an event. NotifyFork resolves which channel and template to use, picks the right provider, enqueues it, retries on failure, and logs everything as structured JSON, ready for GCP Cloud Logging or any aggregator.
+You already know the channel and template you want to send. NotifyFork picks the right provider for that channel, enqueues the delivery, retries on failure, and logs everything as structured JSON, ready for GCP Cloud Logging or any aggregator.
 
 ```bash
 pip install notifyfork
@@ -39,9 +39,11 @@ pip install notifyfork
 ```python
 import notifyfork
 
-notifyfork.send_event(
-    event_type="user.otp_requested",
+notifyfork.send(
     recipient="+5511999999999",
+    channel="sms",
+    template_id="otp_sms",
+    notification_type="transactional",
     context={"code": "847291"},
 )
 # → enqueued to Celery, retried on failure
@@ -96,10 +98,7 @@ variable_mapping = {"name": "1", "code": "2"}
 ### Architecture
 
 ```
-notifyfork.send_event()  (or your own view calling it)
-        │
-        ▼
-  EventRouter          ← resolves event_type → channel + template
+notifyfork.send()  (or your own view calling it)
         │
         ▼
   Celery Queue         ← async, acks_late, exponential backoff
@@ -151,16 +150,18 @@ Then try it with any of the [runnable examples](examples/) via `python manage.py
 
 ---
 
-### Sending an event
+### Sending a notification
 
 **From the same project that installed NotifyFork**: call it directly in Python, no HTTP needed:
 
 ```python
 import notifyfork
 
-notifyfork.send_event(
-    event_type="user.otp_requested",
+notifyfork.send(
     recipient="+5511999999999",
+    channel="sms",
+    template_id="otp_sms",
+    notification_type="transactional",
     context={"code": "847291"},
 )
 # → enqueues to Celery, returns an AsyncResult
@@ -178,20 +179,22 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated  # or whatever auth you use
 import notifyfork
 
-class SendEventView(APIView):
+class SendNotificationView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        task = notifyfork.send_event(
-            event_type=request.data["event_type"],
+        task = notifyfork.send(
             recipient=request.data["recipient"],
+            channel=request.data["channel"],
+            template_id=request.data["template_id"],
+            notification_type=request.data["notification_type"],
             context=request.data.get("context", {}),
         )
         return Response({"task_id": task.id}, status=202)
 ```
 
 Now other services can POST to whatever URL and auth scheme you chose. You're in
-control of the contract, NotifyFork just does the routing and delivery behind it.
+control of the contract, NotifyFork just does the delivery behind it.
 
 Only the delivery-status webhooks (`notifyfork.api.webhooks`) are meant to be mounted
 directly: those validate the provider's own signature (Twilio, SendGrid, Resend), so
@@ -220,19 +223,52 @@ class MyProvider(NotificationProvider):
 
 Register it in `notifyfork/core/infrastructure/container/providers.py`, one block. Done.
 
----
-
-### Adding a new event type
+If the provider lives outside the lib (a separate package, an internal-only
+integration you don't want to upstream), skip editing the container and
+register it with the `@notifyfork.provider` decorator instead — no
+subclassing required, it's duck-typed like everything else:
 
 ```python
-# notifyfork/api/routing/event_router.py
-EVENT_ROUTING_TABLE = {
-    ...
-    "invoice.overdue": RoutingRule(NotificationChannel.EMAIL, "invoice_overdue", NotificationType.TRANSACTIONAL),
-}
+import notifyfork
+
+@notifyfork.provider
+class XptoProvider:
+    name = "xpto"
+
+    async def send_with_template(self, recipient, template, context):
+        ...
 ```
 
-Then add the template via migration. Done.
+The class is instantiated with no arguments and appended to
+`Container.providers()`. See [`examples/custom_provider`](examples/custom_provider).
+
+`channel` isn't a closed enum either — it's whatever string your provider's
+`supported_channels` declares and your `send()` calls use. Registering a
+provider for a channel NotifyFork doesn't ship (Telegram, say) works the
+same as a built-in one, no core code to touch:
+
+```python
+@notifyfork.provider
+class TelegramProvider:
+    name = "telegram_bot"
+    supported_channels = ["telegram"]
+
+    def supports(self, channel):
+        return channel in self.supported_channels
+
+    async def send_with_template(self, recipient, template, context):
+        ...
+
+notifyfork.send(recipient="@someone", channel="telegram", template_id="greeting", notification_type="transactional")
+```
+
+---
+
+### Adding a new kind of notification
+
+There's no event catalog to register. Pick a `channel`, write a template
+via migration, and call `notifyfork.send(...)` with that `template_id`.
+Done — see [Sending a notification](#sending-a-notification) above.
 
 ---
 
@@ -268,9 +304,9 @@ pytest tests/unit -v --cov=notifyfork
 
 A maioria dos sistemas começa com uma chamada direta ao Twilio em algum lugar do código. Depois vem outra. A lógica de retry fica duplicada. Alguém precisa de WhatsApp e tudo desmorona.
 
-O NotifyFork resolve isso tratando notificações como um **problema de roteamento, não de provider**.
+O NotifyFork resolve isso tratando notificações como um **problema de entrega, não de provider**.
 
-Você dispara um evento. O NotifyFork resolve qual canal e template usar, escolhe o provider certo, enfileira, faz retry em caso de falha, e loga tudo em JSON estruturado, pronto para GCP Cloud Logging ou qualquer agregador.
+Você já sabe qual canal e template quer usar. O NotifyFork escolhe o provider certo pra esse canal, enfileira o envio, faz retry em caso de falha, e loga tudo em JSON estruturado, pronto para GCP Cloud Logging ou qualquer agregador.
 
 ```bash
 pip install notifyfork
@@ -279,9 +315,11 @@ pip install notifyfork
 ```python
 import notifyfork
 
-notifyfork.send_event(
-    event_type="user.otp_requested",
+notifyfork.send(
     recipient="+5511999999999",
+    channel="sms",
+    template_id="otp_sms",
+    notification_type="transactional",
     context={"code": "847291"},
 )
 # → enfileirado no Celery, com retry em caso de falha
@@ -365,16 +403,18 @@ Depois é só testar com um dos [exemplos executáveis](examples/) via `python m
 
 ---
 
-### Enviando um evento
+### Enviando uma notificação
 
 **Do mesmo projeto que instalou o NotifyFork**: chama direto em Python, sem HTTP:
 
 ```python
 import notifyfork
 
-notifyfork.send_event(
-    event_type="user.otp_requested",
+notifyfork.send(
     recipient="+5511999999999",
+    channel="sms",
+    template_id="otp_sms",
+    notification_type="transactional",
     context={"code": "847291"},
 )
 # → enfileira no Celery, retorna um AsyncResult
@@ -393,21 +433,22 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated  # ou a auth que você usa
 import notifyfork
 
-class SendEventView(APIView):
+class SendNotificationView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        task = notifyfork.send_event(
-            event_type=request.data["event_type"],
+        task = notifyfork.send(
             recipient=request.data["recipient"],
+            channel=request.data["channel"],
+            template_id=request.data["template_id"],
+            notification_type=request.data["notification_type"],
             context=request.data.get("context", {}),
         )
         return Response({"task_id": task.id}, status=202)
 ```
 
 Agora outros serviços podem mandar POST pra URL e com o esquema de auth que você
-escolheu. Você controla o contrato, o NotifyFork só cuida do roteamento e envio
-por trás.
+escolheu. Você controla o contrato, o NotifyFork só cuida do envio por trás.
 
 Só os webhooks de confirmação de entrega (`notifyfork.api.webhooks`) são feitos pra
 montar direto: esses validam a assinatura do próprio provider (Twilio, SendGrid,
@@ -435,19 +476,52 @@ class MeuProvider(NotificationProvider):
 
 Registre no container em `notifyfork/core/infrastructure/container/providers.py`. Pronto.
 
----
-
-### Adicionando um novo tipo de evento
+Se o provider vive fora da lib (um pacote separado, uma integração interna
+que você não quer subir pro repo), não precisa mexer no container — registre
+com o decorator `@notifyfork.provider`, sem precisar herdar de nada, duck-typing
+igual o resto:
 
 ```python
-# notifyfork/api/routing/event_router.py
-EVENT_ROUTING_TABLE = {
-    ...
-    "fatura.vencida": RoutingRule(NotificationChannel.EMAIL, "fatura_vencida", NotificationType.TRANSACTIONAL),
-}
+import notifyfork
+
+@notifyfork.provider
+class XptoProvider:
+    name = "xpto"
+
+    async def send_with_template(self, recipient, template, context):
+        ...
 ```
 
-Adicione o template via migration. Feito.
+A classe é instanciada sem argumentos e adicionada em `Container.providers()`.
+Veja [`examples/custom_provider`](examples/custom_provider).
+
+`channel` também não é um enum fechado — é a string que o `supported_channels`
+do seu provider declarar e que você usar na chamada de `send()`. Registrar um
+provider pra um canal que o NotifyFork não vem com suporte nativo (Telegram,
+por exemplo) funciona igual a um built-in, sem tocar em código do core:
+
+```python
+@notifyfork.provider
+class TelegramProvider:
+    name = "telegram_bot"
+    supported_channels = ["telegram"]
+
+    def supports(self, channel):
+        return channel in self.supported_channels
+
+    async def send_with_template(self, recipient, template, context):
+        ...
+
+notifyfork.send(recipient="@someone", channel="telegram", template_id="greeting", notification_type="transactional")
+```
+
+---
+
+### Adicionando um novo tipo de notificação
+
+Não existe catálogo de eventos pra cadastrar. Escolhe um `channel`, cria o
+template via migration, e chama `notifyfork.send(...)` com esse `template_id`.
+Pronto — veja [Enviando uma notificação](#enviando-uma-notificação) acima.
 
 ---
 

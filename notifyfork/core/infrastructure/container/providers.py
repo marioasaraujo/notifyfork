@@ -13,6 +13,7 @@ Usage:
 import os
 import logging
 from functools import lru_cache
+from typing import Any
 
 from notifyfork.core.application.interfaces.notification_provider import NotificationProvider
 from notifyfork.core.application.use_cases.send_notification import SendNotificationUseCase
@@ -30,6 +31,12 @@ DEFAULT_PROVIDER_ORDER = [
     "firebase_push",
     "slack",
 ]
+
+# Providers registered from outside the lib via @notifyfork.provider.
+# Duck-typed on purpose — no NotificationProvider subclassing required,
+# same as every built-in provider is only ever used through .name /
+# .send_with_template() / .supported_channels, never isinstance-checked.
+_extra_providers: list[Any] = []
 
 
 def _ordered(providers: list[NotificationProvider]) -> list[NotificationProvider]:
@@ -144,6 +151,8 @@ def _build_providers() -> list[NotificationProvider]:
     else:
         logger.warning("slack skipped — missing SLACK_BOT_TOKEN")
 
+    providers.extend(_extra_providers)
+
     if not providers:
         logger.error("No providers registered — check your environment variables")
 
@@ -176,3 +185,34 @@ class Container:
             template_repository=Container.template_repository(),
             providers=Container.providers(),
         )
+
+
+def provider(provider_cls: type) -> type:
+    """
+    Decorator that registers a custom provider from outside the lib.
+
+    No need to subclass NotificationProvider — duck-typing, same as every
+    built-in provider (the container only ever reads .name and calls
+    .send_with_template()). Just instantiate-and-go:
+
+        import notifyfork
+
+        @notifyfork.provider
+        class XptoProvider:
+            name = "xpto"
+            def send_with_template(self, recipient, template, context): ...
+
+    The class is instantiated with no arguments, so anything it needs
+    (API keys, clients, etc.) should be read in __init__ from the
+    environment, same as the built-in providers do in _build_providers().
+    """
+    instance = provider_cls()
+    _extra_providers.append(instance)
+
+    # Container.providers() is lru_cache'd — if something already read it
+    # before this decorator ran, drop the stale result so the new provider
+    # is picked up on the next call.
+    Container.providers.cache_clear()
+
+    logger.info("Provider registered: %s", getattr(instance, "name", provider_cls.__name__))
+    return provider_cls

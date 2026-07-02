@@ -36,17 +36,18 @@ Coverage must stay above **80%**. PRs that drop coverage will not be merged.
 5. Add a runnable example in `examples/your_channel/`
 6. Update the channel table in `README.md`
 
-## Adding a new event type
+## Adding a new kind of notification
 
-1. Add the rule to `EVENT_ROUTING_TABLE` in `notifyfork/api/routing/event_router.py`
-2. Add the template via a new migration in `notifyfork/core/infrastructure/migrations/`
+There's no event catalog. Just add the template via a new migration in
+`notifyfork/core/infrastructure/migrations/`, then call `notifyfork.send(...)`
+with that `template_id` and whatever `channel` it belongs to.
 
 ## Pull Request checklist
 
 - [ ] Tests pass (`pytest tests/unit`)
 - [ ] Coverage ≥ 80%
 - [ ] New provider has at least one example in `examples/`
-- [ ] README updated if a new channel or event type was added
+- [ ] README updated if a new channel was added
 - [ ] `CHANGELOG.md` updated
 
 ## Code style

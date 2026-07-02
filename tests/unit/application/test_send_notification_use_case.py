@@ -174,6 +174,26 @@ class TestSendNotificationUseCase:
             await use_case.execute(make_dto(template_id="ghost"))
         mock_notification_repository.save.assert_not_called()
 
+    # Free-form channel / notification_type
+
+    async def test_channel_outside_the_built_in_enum_still_works(
+        self, mock_notification_repository, mock_template_repository
+    ):
+        """channel/notification_type are plain strings — a provider for a
+        channel NotificationChannel doesn't even know about (e.g. a custom
+        Telegram integration) works the same as a built-in one."""
+        from tests.conftest import make_mock_provider
+        telegram_provider = make_mock_provider("telegram_bot", ["telegram"])
+
+        use_case = SendNotificationUseCase(
+            mock_notification_repository, mock_template_repository, [telegram_provider]
+        )
+        dto = make_dto(channel="telegram")
+        notification_id = await use_case.execute(dto)
+
+        assert notification_id is not None
+        telegram_provider.send_with_template.assert_called_once()
+
     # Provider selection
 
     async def test_uses_first_matching_provider(

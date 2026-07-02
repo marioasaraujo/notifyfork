@@ -73,7 +73,7 @@ class SendNotificationUseCase:
                 "Provider failed" + (", falling back to next provider" if has_fallback else ""),
                 extra={
                     "provider": provider.name,
-                    "channel": dto.channel.value,
+                    "channel": dto.channel,
                     "error": error,
                     "fallback_available": has_fallback,
                 },

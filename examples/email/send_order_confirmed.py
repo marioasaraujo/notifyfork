@@ -11,9 +11,11 @@ import notifyfork
 recipient = "customer@example.com"
 
 print(f"→ Email order confirmation to {recipient}")
-task = notifyfork.send_event(
-    event_type="order.confirmed",
+task = notifyfork.send(
     recipient=recipient,
+    channel="email",
+    template_id="order_confirmed",
+    notification_type="transactional",
     context={
         "name": "Mario Araujo",
         "order_id": "ORD-20240601-001",

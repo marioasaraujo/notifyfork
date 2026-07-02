@@ -50,8 +50,8 @@ class Notification:
     """
 
     recipient: str
-    channel: NotificationChannel
-    notification_type: NotificationType
+    channel: str
+    notification_type: str
     template_id: str
     context: dict[str, Any] = field(default_factory=dict)
     id: UUID = field(default_factory=uuid4)
@@ -67,7 +67,7 @@ class Notification:
 
     def mark_queued(self) -> None:
         logger.info("Notification queued", extra={
-            "notification_id": str(self.id), "channel": self.channel.value,
+            "notification_id": str(self.id), "channel": self.channel,
         })
         self.status = NotificationStatus.QUEUED
 
@@ -80,7 +80,7 @@ class Notification:
             "notification_id": str(self.id),
             "provider": provider,
             "provider_message_id": provider_message_id,
-            "channel": self.channel.value,
+            "channel": self.channel,
         })
 
     def mark_delivered(self) -> None:

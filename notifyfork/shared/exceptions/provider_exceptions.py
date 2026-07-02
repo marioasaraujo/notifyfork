@@ -1,13 +1,10 @@
-from notifyfork.core.domain.entities.notification import NotificationChannel
-
-
 class NotificationGatewayError(Exception):
     """Base exception for the notification gateway domain."""
 
 
 class NoProviderAvailable(NotificationGatewayError):
-    def __init__(self, channel: NotificationChannel) -> None:
-        super().__init__(f"No provider registered for channel: {channel.value}")
+    def __init__(self, channel: str) -> None:
+        super().__init__(f"No provider registered for channel: {channel}")
         self.channel = channel
 
 

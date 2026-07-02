@@ -11,9 +11,11 @@ Run from inside a Django project that has NotifyFork installed, e.g.:
 import notifyfork
 
 print("→ Push notification via Firebase")
-task = notifyfork.send_event(
-    event_type="promotion.flash_sale",
+task = notifyfork.send(
     recipient="FCM_DEVICE_TOKEN_HERE",  # replace with a real token
+    channel="push",
+    template_id="flash_sale_push",
+    notification_type="marketing",
     context={
         "discount": "40%",
         "expires_in": "3 hours",

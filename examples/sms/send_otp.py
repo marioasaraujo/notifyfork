@@ -11,9 +11,11 @@ import notifyfork
 recipient = "+5511999990001"  # replace with a real number
 
 print(f"→ SMS OTP to {recipient}")
-task = notifyfork.send_event(
-    event_type="user.otp_requested",
+task = notifyfork.send(
     recipient=recipient,
+    channel="sms",
+    template_id="otp_sms",
+    notification_type="transactional",
     context={"code": "847291"},
 )
 print(f"✓ task_id={task.id}")

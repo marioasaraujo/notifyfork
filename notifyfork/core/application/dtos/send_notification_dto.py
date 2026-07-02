@@ -1,12 +1,11 @@
 from typing import Any
 from pydantic import BaseModel, field_validator
-from notifyfork.core.domain.entities.notification import NotificationChannel, NotificationType
 
 
 class SendNotificationDTO(BaseModel):
     recipient: str
-    channel: NotificationChannel
-    notification_type: NotificationType
+    channel: str
+    notification_type: str
     template_id: str
     context: dict[str, Any] = {}
     max_attempts: int = 3

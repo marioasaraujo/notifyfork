@@ -2,9 +2,7 @@ import logging
 from uuid import UUID
 
 from notifyfork.core.application.interfaces.notification_repository import NotificationRepository
-from notifyfork.core.domain.entities.notification import (
-    Notification, NotificationChannel, NotificationStatus, NotificationType
-)
+from notifyfork.core.domain.entities.notification import Notification, NotificationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +15,8 @@ class DjangoNotificationRepository(NotificationRepository):
             id=notification.id,
             defaults={
                 "recipient": notification.recipient,
-                "channel": notification.channel.value,
-                "notification_type": notification.notification_type.value,
+                "channel": notification.channel,
+                "notification_type": notification.notification_type,
                 "template_id": notification.template_id,
                 "context": notification.context,
                 "status": notification.status.value,
@@ -55,8 +53,8 @@ class DjangoNotificationRepository(NotificationRepository):
     def _to_entity(obj) -> Notification:
         n = Notification(
             recipient=obj.recipient,
-            channel=NotificationChannel(obj.channel),
-            notification_type=NotificationType(obj.notification_type),
+            channel=obj.channel,
+            notification_type=obj.notification_type,
             template_id=obj.template_id,
             context=obj.context,
             id=obj.id,

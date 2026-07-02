@@ -14,9 +14,11 @@ import notifyfork
 recipient = "C012AB3CD"  # replace with your Slack channel ID
 
 print(f"→ Slack alert to channel {recipient}")
-task = notifyfork.send_event(
-    event_type="system.error",
+task = notifyfork.send(
     recipient=recipient,
+    channel="slack",
+    template_id="system_error_slack",
+    notification_type="alert",
     context={
         "service": "payment-api",
         "error": "Connection timeout after 30s — PostgreSQL unreachable",

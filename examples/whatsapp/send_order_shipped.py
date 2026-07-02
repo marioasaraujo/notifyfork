@@ -21,9 +21,11 @@ import notifyfork
 recipient = "+5511999990002"  # replace with opted-in number
 
 print(f"→ WhatsApp shipment alert to {recipient}")
-task = notifyfork.send_event(
-    event_type="order.shipped",
+task = notifyfork.send(
     recipient=recipient,
+    channel="whatsapp",
+    template_id="order_shipped_wa",
+    notification_type="transactional",
     context={
         "name": "Mario",
         "tracking_code": "BR999888777BR",

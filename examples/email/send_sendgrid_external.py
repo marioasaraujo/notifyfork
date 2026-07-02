@@ -20,9 +20,11 @@ import notifyfork
 recipient = "customer@example.com"
 
 print(f"→ Email via SendGrid Dynamic Template to {recipient}")
-task = notifyfork.send_event(
-    event_type="order.confirmed",
+task = notifyfork.send(
     recipient=recipient,
+    channel="email",
+    template_id="order_confirmed_sg",
+    notification_type="transactional",
     context={
         "name": "Mario Araujo",
         "order_id": "ORD-2024-001",
