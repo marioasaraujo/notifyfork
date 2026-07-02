@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "notifyfork"
 version = "0.1.0"
-description = "Provider-agnostic notification gateway for Django. Route events to SMS, Email, WhatsApp, Push, and Slack via a single API."
+description = "Provider-agnostic notification gateway for Django. Send to SMS, Email, WhatsApp, Push, and Slack via a single API."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Mario Araujo", email = "marioasaraujo@gmail.com" }]

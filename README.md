@@ -26,11 +26,9 @@ delivered asynchronously, retried safely, logged in structured JSON.</p>
 
 ### What is NotifyFork?
 
-Most systems start with a direct Twilio call somewhere in the codebase. Then another one. Then retry logic gets duplicated. Then someone needs WhatsApp and the whole thing breaks apart.
+Direct Twilio calls scattered through a codebase get messy fast: duplicated retry logic, then someone needs WhatsApp and it all falls apart.
 
-NotifyFork solves this by treating notifications as a **delivery problem, not a provider problem**.
-
-You already know the channel and template you want to send. NotifyFork picks the right provider for that channel, enqueues the delivery, retries on failure, and logs everything as structured JSON, ready for GCP Cloud Logging or any aggregator.
+NotifyFork is a thin, provider-agnostic delivery layer. You already know the channel and template you want; it picks the right provider, enqueues the delivery, retries on failure, and logs everything as structured JSON.
 
 ```bash
 pip install notifyfork
@@ -49,7 +47,7 @@ notifyfork.send(
 # → enqueued to Celery, retried on failure
 ```
 
-That's the full API surface for the caller. Provider selection, template rendering, and retry all happen behind the queue.
+That's the whole API. Provider selection, template rendering, and retry all happen behind the queue.
 
 ---
 
@@ -65,9 +63,7 @@ That's the full API surface for the caller. Provider selection, template renderi
 | Push | Firebase Cloud Messaging | Local (title + body) |
 | Slack | Slack Web API | Local (plain or Block Kit) |
 
-Multiple email providers registered at once fall back on each other automatically. See "Reliability" below.
-
-Adding a new provider = one new class. Nothing else changes.
+Multiple providers per channel fall back on each other automatically (see "Reliability"). Adding a provider is one new class — see "Adding a provider" below. `channel` isn't limited to this table either; you can register a provider for a channel NotifyFork doesn't ship at all.
 
 ---
 
@@ -152,25 +148,9 @@ Then try it with any of the [runnable examples](examples/) via `python manage.py
 
 ### Sending a notification
 
-**From the same project that installed NotifyFork**: call it directly in Python, no HTTP needed:
+**Same project**: call `notifyfork.send(...)` directly in Python, as shown above. No HTTP needed.
 
-```python
-import notifyfork
-
-notifyfork.send(
-    recipient="+5511999999999",
-    channel="sms",
-    template_id="otp_sms",
-    notification_type="transactional",
-    context={"code": "847291"},
-)
-# → enqueues to Celery, returns an AsyncResult
-```
-
-**From a different service** (another microservice, a different language): NotifyFork
-deliberately doesn't ship a public HTTP endpoint. An open "send anything" endpoint
-needs authentication, and that's different for every deployment, not something a
-library should decide for you. Add a thin view in your own project instead:
+**Different service** (another microservice, another language): NotifyFork doesn't ship a public HTTP endpoint on purpose — auth is different per deployment, not something a library should decide for you. Add a thin authenticated view instead:
 
 ```python
 # yourproject/notifications/views.py
@@ -193,16 +173,15 @@ class SendNotificationView(APIView):
         return Response({"task_id": task.id}, status=202)
 ```
 
-Now other services can POST to whatever URL and auth scheme you chose. You're in
-control of the contract, NotifyFork just does the delivery behind it.
+Other services POST to whatever URL and auth scheme you chose — you control the contract, NotifyFork just does the delivery behind it.
 
-Only the delivery-status webhooks (`notifyfork.api.webhooks`) are meant to be mounted
-directly: those validate the provider's own signature (Twilio, SendGrid, Resend), so
-they don't need your app's auth.
+The delivery-status webhooks (`notifyfork.api.webhooks`) are the one exception meant to be mounted directly: they validate the provider's own signature (Twilio, SendGrid, Resend), so they don't need your app's auth.
 
 ---
 
-### Adding a new provider
+### Adding a provider
+
+**Built into the lib** — subclass `NotificationProvider` and register it in `container/providers.py`:
 
 ```python
 # notifyfork/core/infrastructure/providers/my_provider.py
@@ -221,37 +200,15 @@ class MyProvider(NotificationProvider):
         ...
 ```
 
-Register it in `notifyfork/core/infrastructure/container/providers.py`, one block. Done.
-
-If the provider lives outside the lib (a separate package, an internal-only
-integration you don't want to upstream), skip editing the container and
-register it with the `@notifyfork.provider` decorator instead — no
-subclassing required, it's duck-typed like everything else:
+**From your own project** — no subclassing, no editing the container, just decorate a plain class (duck-typed, only `.name` and `.send_with_template()` are ever touched):
 
 ```python
 import notifyfork
 
 @notifyfork.provider
-class XptoProvider:
-    name = "xpto"
-
-    async def send_with_template(self, recipient, template, context):
-        ...
-```
-
-The class is instantiated with no arguments and appended to
-`Container.providers()`. See [`examples/custom_provider`](examples/custom_provider).
-
-`channel` isn't a closed enum either — it's whatever string your provider's
-`supported_channels` declares and your `send()` calls use. Registering a
-provider for a channel NotifyFork doesn't ship (Telegram, say) works the
-same as a built-in one, no core code to touch:
-
-```python
-@notifyfork.provider
 class TelegramProvider:
     name = "telegram_bot"
-    supported_channels = ["telegram"]
+    supported_channels = ["telegram"]  # channel isn't a closed enum — any string works
 
     def supports(self, channel):
         return channel in self.supported_channels
@@ -262,13 +219,13 @@ class TelegramProvider:
 notifyfork.send(recipient="@someone", channel="telegram", template_id="greeting", notification_type="transactional")
 ```
 
+The class is instantiated with no arguments and appended to `Container.providers()`. See [`examples/custom_provider`](examples/custom_provider).
+
 ---
 
-### Adding a new kind of notification
+### Adding a kind of notification
 
-There's no event catalog to register. Pick a `channel`, write a template
-via migration, and call `notifyfork.send(...)` with that `template_id`.
-Done — see [Sending a notification](#sending-a-notification) above.
+No event catalog to register. Pick a `channel`, write a template via migration, call `notifyfork.send(...)` with that `template_id`. Done.
 
 ---
 
@@ -302,11 +259,9 @@ pytest tests/unit -v --cov=notifyfork
 
 ### O que é o NotifyFork?
 
-A maioria dos sistemas começa com uma chamada direta ao Twilio em algum lugar do código. Depois vem outra. A lógica de retry fica duplicada. Alguém precisa de WhatsApp e tudo desmorona.
+Chamada direta ao Twilio espalhada pelo código vira bagunça rápido: lógica de retry duplicada, e daí alguém precisa de WhatsApp e tudo desmorona.
 
-O NotifyFork resolve isso tratando notificações como um **problema de entrega, não de provider**.
-
-Você já sabe qual canal e template quer usar. O NotifyFork escolhe o provider certo pra esse canal, enfileira o envio, faz retry em caso de falha, e loga tudo em JSON estruturado, pronto para GCP Cloud Logging ou qualquer agregador.
+O NotifyFork é uma camada de entrega fina e agnóstica de provider. Você já sabe qual canal e template quer usar; ele escolhe o provider certo, enfileira o envio, faz retry em caso de falha, e loga tudo em JSON estruturado.
 
 ```bash
 pip install notifyfork
@@ -325,7 +280,7 @@ notifyfork.send(
 # → enfileirado no Celery, com retry em caso de falha
 ```
 
-Essa é toda a superfície de API para quem chama. Seleção de provider, renderização de template e retry acontecem atrás da fila.
+Essa é toda a API. Seleção de provider, renderização de template e retry acontecem atrás da fila.
 
 ---
 
@@ -341,9 +296,7 @@ Essa é toda a superfície de API para quem chama. Seleção de provider, render
 | Push | Firebase Cloud Messaging | Local (título + body) |
 | Slack | Slack Web API | Local (texto simples ou Block Kit) |
 
-Registrando mais de um provider de e-mail ao mesmo tempo, o fallback entre eles acontece automático. Veja "Confiabilidade" mais abaixo.
-
-Adicionar um novo provider = criar uma nova classe. Nada mais muda.
+Mais de um provider por canal cai um pro outro automaticamente (veja "Confiabilidade"). Adicionar um provider é uma classe nova — veja "Adicionando um provider" abaixo. `channel` também não fica preso a essa tabela; dá pra registrar um provider pra um canal que o NotifyFork nem conhece.
 
 ---
 
@@ -405,26 +358,9 @@ Depois é só testar com um dos [exemplos executáveis](examples/) via `python m
 
 ### Enviando uma notificação
 
-**Do mesmo projeto que instalou o NotifyFork**: chama direto em Python, sem HTTP:
+**Mesmo projeto**: chama `notifyfork.send(...)` direto em Python, como no exemplo acima. Sem HTTP.
 
-```python
-import notifyfork
-
-notifyfork.send(
-    recipient="+5511999999999",
-    channel="sms",
-    template_id="otp_sms",
-    notification_type="transactional",
-    context={"code": "847291"},
-)
-# → enfileira no Celery, retorna um AsyncResult
-```
-
-**De outro serviço** (outro microserviço seu, outra linguagem): o NotifyFork
-propositalmente não expõe endpoint HTTP público. Um endpoint aberto de "manda
-qualquer coisa" precisa de autenticação, e isso muda por deploy, não é algo que
-uma lib deveria decidir por você. Em vez disso, crie uma view fina no seu próprio
-projeto:
+**Outro serviço** (outro microserviço seu, outra linguagem): o NotifyFork propositalmente não expõe endpoint HTTP público — auth muda por deploy, não é algo que uma lib deveria decidir por você. Em vez disso, crie uma view fina e autenticada no seu próprio projeto:
 
 ```python
 # seuprojeto/notifications/views.py
@@ -447,16 +383,15 @@ class SendNotificationView(APIView):
         return Response({"task_id": task.id}, status=202)
 ```
 
-Agora outros serviços podem mandar POST pra URL e com o esquema de auth que você
-escolheu. Você controla o contrato, o NotifyFork só cuida do envio por trás.
+Outros serviços mandam POST pra URL e esquema de auth que você escolheu — você controla o contrato, o NotifyFork só cuida do envio por trás.
 
-Só os webhooks de confirmação de entrega (`notifyfork.api.webhooks`) são feitos pra
-montar direto: esses validam a assinatura do próprio provider (Twilio, SendGrid,
-Resend), então não dependem da auth da sua aplicação.
+Os webhooks de confirmação de entrega (`notifyfork.api.webhooks`) são a única exceção feita pra montar direto: eles validam a assinatura do próprio provider (Twilio, SendGrid, Resend), então não dependem da auth da sua aplicação.
 
 ---
 
-### Adicionando um novo provider
+### Adicionando um provider
+
+**Dentro da lib** — herda de `NotificationProvider` e registra no `container/providers.py`:
 
 ```python
 class MeuProvider(NotificationProvider):
@@ -474,37 +409,15 @@ class MeuProvider(NotificationProvider):
         ...
 ```
 
-Registre no container em `notifyfork/core/infrastructure/container/providers.py`. Pronto.
-
-Se o provider vive fora da lib (um pacote separado, uma integração interna
-que você não quer subir pro repo), não precisa mexer no container — registre
-com o decorator `@notifyfork.provider`, sem precisar herdar de nada, duck-typing
-igual o resto:
+**Do seu próprio projeto** — sem herdar nada, sem mexer no container, só decora uma classe comum (duck-typing, só `.name` e `.send_with_template()` são usados):
 
 ```python
 import notifyfork
 
 @notifyfork.provider
-class XptoProvider:
-    name = "xpto"
-
-    async def send_with_template(self, recipient, template, context):
-        ...
-```
-
-A classe é instanciada sem argumentos e adicionada em `Container.providers()`.
-Veja [`examples/custom_provider`](examples/custom_provider).
-
-`channel` também não é um enum fechado — é a string que o `supported_channels`
-do seu provider declarar e que você usar na chamada de `send()`. Registrar um
-provider pra um canal que o NotifyFork não vem com suporte nativo (Telegram,
-por exemplo) funciona igual a um built-in, sem tocar em código do core:
-
-```python
-@notifyfork.provider
 class TelegramProvider:
     name = "telegram_bot"
-    supported_channels = ["telegram"]
+    supported_channels = ["telegram"]  # channel não é enum fechado, qualquer string serve
 
     def supports(self, channel):
         return channel in self.supported_channels
@@ -515,13 +428,14 @@ class TelegramProvider:
 notifyfork.send(recipient="@someone", channel="telegram", template_id="greeting", notification_type="transactional")
 ```
 
+A classe é instanciada sem argumentos e adicionada em `Container.providers()`.
+Veja [`examples/custom_provider`](examples/custom_provider).
+
 ---
 
-### Adicionando um novo tipo de notificação
+### Adicionando um tipo de notificação
 
-Não existe catálogo de eventos pra cadastrar. Escolhe um `channel`, cria o
-template via migration, e chama `notifyfork.send(...)` com esse `template_id`.
-Pronto — veja [Enviando uma notificação](#enviando-uma-notificação) acima.
+Não existe catálogo de eventos. Escolhe um `channel`, cria o template via migration, chama `notifyfork.send(...)` com esse `template_id`. Pronto.
 
 ---
 
@@ -555,7 +469,7 @@ pytest tests/unit -v --cov=notifyfork
 ```
 notifyfork/
 ├── notifyfork/                ← o pacote publicado (isto que vira "pip install notifyfork")
-│   ├── api/                   ← Views Django, serializers, event router, webhooks
+│   ├── api/                   ← Views Django, serializers, webhooks
 │   └── core/
 │       ├── domain/            ← Entidades, value objects, domain events
 │       ├── application/       ← Use cases, interfaces, DTOs
