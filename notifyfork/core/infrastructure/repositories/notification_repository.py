@@ -21,6 +21,7 @@ class DjangoNotificationRepository(NotificationRepository):
                 "context": notification.context,
                 "status": notification.status.value,
                 "provider_used": notification.provider_used,
+                "provider_message_id": notification.provider_message_id,
                 "attempts": notification.attempts,
                 "max_attempts": notification.max_attempts,
                 "error_detail": notification.error_detail,
@@ -64,6 +65,7 @@ class DjangoNotificationRepository(NotificationRepository):
             created_at=obj.created_at,
             sent_at=obj.sent_at,
             provider_used=obj.provider_used,
+            provider_message_id=obj.provider_message_id,
         )
         n.status = NotificationStatus(obj.status)
         return n

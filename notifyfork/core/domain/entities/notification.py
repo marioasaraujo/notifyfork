@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
@@ -61,7 +61,7 @@ class Notification:
     attempts: int = 0
     max_attempts: int = 3
     error_detail: str | None = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     sent_at: datetime | None = None
     delivered_at: datetime | None = None
 
@@ -75,7 +75,7 @@ class Notification:
         self.status = NotificationStatus.SENT
         self.provider_used = provider
         self.provider_message_id = provider_message_id
-        self.sent_at = datetime.utcnow()
+        self.sent_at = datetime.now(timezone.utc)
         logger.info("Notification sent — awaiting delivery confirmation", extra={
             "notification_id": str(self.id),
             "provider": provider,
@@ -90,7 +90,7 @@ class Notification:
                 "notification_id": str(self.id), "current_status": self.status,
             })
         self.status = NotificationStatus.DELIVERED
-        self.delivered_at = datetime.utcnow()
+        self.delivered_at = datetime.now(timezone.utc)
         logger.info("Notification delivered", extra={
             "notification_id": str(self.id),
             "provider": self.provider_used,

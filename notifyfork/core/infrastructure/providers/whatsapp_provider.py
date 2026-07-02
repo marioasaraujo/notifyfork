@@ -108,7 +108,10 @@ class TwilioWhatsAppProvider(NotificationProvider):
                 success=True, provider_name=self.name, external_id=message.sid
             )
         except TwilioRestException as e:
-            logger.error("WhatsApp external template error", extra={"code": e.code, "msg": e.msg})
+            logger.error(
+                "WhatsApp external template error",
+                extra={"code": e.code, "twilio_message": e.msg},
+            )
             return ProviderResult(
                 success=False,
                 provider_name=self.name,
