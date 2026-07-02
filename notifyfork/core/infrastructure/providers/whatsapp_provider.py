@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Any
 
@@ -99,7 +100,7 @@ class TwilioWhatsAppProvider(NotificationProvider):
         try:
             message = self._client.messages.create(
                 content_sid=template.external_template_id,
-                content_variables=str(translated),  # Twilio expects JSON string
+                content_variables=json.dumps(translated),  # Twilio expects JSON string
                 from_=self._from_number,
                 to=to,
             )
