@@ -51,7 +51,7 @@ class TwilioSMSProvider(NotificationProvider):
             return ProviderResult(success=True, provider_name=self.name, external_id=message.sid)
 
         except TwilioRestException as e:
-            logger.error("Twilio SMS error", extra={"code": e.code, "msg": e.msg})
+            logger.error("Twilio SMS error", extra={"code": e.code, "twilio_message": e.msg})
             return ProviderResult(
                 success=False, provider_name=self.name, error=f"Twilio [{e.code}]: {e.msg}"
             )

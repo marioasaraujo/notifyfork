@@ -57,18 +57,39 @@ class SendNotificationUseCase:
 
         error = "Unknown provider error"
         for index, provider in enumerate(candidates):
-            # Provider handles LOCAL vs EXTERNAL rendering internally
-            result = await provider.send_with_template(
-                recipient=dto.recipient,
-                template=template,
-                context=dto.context,
-            )
+            has_fallback = index < len(candidates) - 1
+            try:
+                # Provider handles LOCAL vs EXTERNAL rendering internally
+                result = await provider.send_with_template(
+                    recipient=dto.recipient,
+                    template=template,
+                    context=dto.context,
+                )
+            except Exception as exc:
+                # A provider raising instead of returning ProviderResult(success=False)
+                # must not escape this loop: an uncaught exception here propagates to
+                # the Celery task, which retries the whole use case from scratch
+                # (creating a brand-new Notification each time) and this notification
+                # is never saved as FAILED — it's left stuck in QUEUED forever, even
+                # after Celery's own retries are exhausted.
+                error = str(exc)
+                logger.warning(
+                    "Provider raised an exception"
+                    + (", falling back to next provider" if has_fallback else ""),
+                    extra={
+                        "provider": provider.name,
+                        "channel": dto.channel,
+                        "error": error,
+                        "fallback_available": has_fallback,
+                    },
+                )
+                continue
+
             if result.success:
-                notification.mark_sent(provider.name)
+                notification.mark_sent(provider.name, result.external_id)
                 break
 
             error = result.error or "Unknown provider error"
-            has_fallback = index < len(candidates) - 1
             logger.warning(
                 "Provider failed" + (", falling back to next provider" if has_fallback else ""),
                 extra={
