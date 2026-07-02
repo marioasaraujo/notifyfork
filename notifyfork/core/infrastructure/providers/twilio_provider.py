@@ -29,7 +29,9 @@ class TwilioSMSProvider(NotificationProvider):
 
     @property
     def supported_channels(self) -> list[NotificationChannel]:
-        return [NotificationChannel.SMS]
+        # "sms" — generic, eligible for fallback if another SMS provider is
+        # registered. "twilio_sms" (== self.name) — pins this exact vendor.
+        return [NotificationChannel.SMS, self.name]
 
     async def send_with_template(
         self,

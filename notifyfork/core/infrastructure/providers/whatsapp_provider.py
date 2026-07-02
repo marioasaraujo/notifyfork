@@ -10,6 +10,17 @@ from notifyfork.core.domain.value_objects.template import NotificationTemplate, 
 
 logger = logging.getLogger(__name__)
 
+# Current WhatsApp vendor: Twilio (via the official `twilio` SDK, hence no
+# hardcoded _API_URL like sendgrid_provider.py — the SDK's Client resolves
+# https://api.twilio.com internally).
+#
+# This is the only WhatsApp provider today, but not the only one planned —
+# e.g. Evolution API is a likely next candidate. Follow the SendGrid/SMTP
+# pattern for that: a new file (evolution_provider.py) with its own
+# EvolutionWhatsAppProvider class, registered for the same
+# NotificationChannel.WHATSAPP, ordered/failed-over via
+# NOTIFYFORK_PROVIDER_ORDER — not a branch inside this class.
+
 
 class TwilioWhatsAppProvider(NotificationProvider):
     """
@@ -17,6 +28,14 @@ class TwilioWhatsAppProvider(NotificationProvider):
 
     LOCAL mode — sandbox/dev only. Sends free-form text.
     EXTERNAL mode — production. Uses Meta-approved template SID + mapped variables.
+
+    channel="whatsapp" stays generic even with a second provider (e.g. a future
+    Evolution API integration) registered for the same NotificationChannel.WHATSAPP —
+    same pattern as SendGrid/SMTP on channel="email". But that automatic fallback is
+    only safe for LOCAL-mode templates. A template in EXTERNAL mode here holds a
+    Twilio Content SID, which only this provider understands — a LOCAL-only WhatsApp
+    provider (like SMTP is for email) can't fall back to it. Keep EXTERNAL templates
+    provider-specific; don't rely on channel fallback across template modes.
 
     Twilio WhatsApp external templates use positional variables: "1", "2", "3"...
     Use VariableMapping to translate your semantic context to positional keys:
@@ -39,7 +58,10 @@ class TwilioWhatsAppProvider(NotificationProvider):
 
     @property
     def supported_channels(self) -> list[NotificationChannel]:
-        return [NotificationChannel.WHATSAPP]
+        # "whatsapp" — generic, eligible for automatic fallback if another
+        # WhatsApp provider (e.g. Evolution) is registered later.
+        # "twilio_whatsapp" (== self.name) — pins this exact vendor, no fallback.
+        return [NotificationChannel.WHATSAPP, self.name]
 
     async def send_with_template(
         self,

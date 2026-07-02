@@ -25,7 +25,9 @@ class FirebasePushProvider(NotificationProvider):
 
     @property
     def supported_channels(self) -> list[NotificationChannel]:
-        return [NotificationChannel.PUSH]
+        # "push" — generic, eligible for fallback if another push provider is
+        # registered. "firebase_push" (== self.name) — pins this exact vendor.
+        return [NotificationChannel.PUSH, self.name]
 
     async def send_with_template(
         self,

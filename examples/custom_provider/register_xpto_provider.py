@@ -8,6 +8,12 @@ duck-typed, same as every built-in provider: the container only ever
 reads .name and calls .send_with_template(), and the result only needs
 .success / .error. No notifyfork types needed to write one.
 
+Naming: built-in providers name themselves "vendor_channel" (twilio_sms,
+sendgrid_email...) so NOTIFYFORK_PROVIDER_ORDER and notification.provider_used
+make it obvious which vendor sent what. `name` here is a free string — nothing
+enforces the convention — but following it (e.g. "xpto_sms" instead of just
+"xpto") avoids ambiguity once you register more than one custom provider.
+
 Run from inside a Django project that has NotifyFork installed, e.g.:
     python manage.py shell < examples/custom_provider/register_xpto_provider.py
 """
@@ -18,7 +24,7 @@ import notifyfork
 
 @notifyfork.provider
 class XptoProvider:
-    name = "xpto"
+    name = "xpto_sms"
     supported_channels = ["sms"]
 
     def supports(self, channel):

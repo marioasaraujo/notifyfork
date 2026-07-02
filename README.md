@@ -65,6 +65,16 @@ That's the whole API. Provider selection, template rendering, and retry all happ
 
 Multiple providers per channel fall back on each other automatically (see "Reliability"). Adding a provider is one new class — see "Adding a provider" below. `channel` isn't limited to this table either; you can register a provider for a channel NotifyFork doesn't ship at all.
 
+**Generic vs. explicit `channel`**: every built-in provider accepts `channel` two ways — the generic form (`"whatsapp"`, `"email"`, `"sms"`) and its own `vendor_channel` name (`twilio_whatsapp`, `sendgrid_email`, `twilio_sms`...), because `supported_channels` lists both:
+
+```python
+notifyfork.send(channel="whatsapp", ...)         # generic — eligible for fallback if
+                                                  # another WhatsApp provider is registered
+notifyfork.send(channel="twilio_whatsapp", ...)  # explicit — pins Twilio, no fallback
+```
+
+Use generic when you want NotifyFork to pick/fall back between whichever providers are registered for that channel (ordered by `DEFAULT_PROVIDER_ORDER` / `NOTIFYFORK_PROVIDER_ORDER`, recorded in `notification.provider_used`). Use the explicit `vendor_channel` form when you specifically need that vendor — e.g. an **EXTERNAL**-mode template holds a vendor-specific template ID (a Twilio Content SID, a SendGrid Dynamic Template ID) that only the issuing provider understands, so pinning the channel documents that lock instead of implying a fallback that couldn't work anyway. `slack` is the one provider without a separate explicit form: there's only one Slack integration (the Web API), and vendor and channel are already the same word, so `slack_slack` would add nothing. See the runnable [examples](examples/) for both forms in context.
+
 ---
 
 ### Template modes
@@ -184,11 +194,11 @@ The delivery-status webhooks (`notifyfork.api.webhooks`) are the one exception m
 **Built into the lib** — subclass `NotificationProvider` and register it in `container/providers.py`:
 
 ```python
-# notifyfork/core/infrastructure/providers/my_provider.py
-class MyProvider(NotificationProvider):
+# notifyfork/core/infrastructure/providers/myvendor_provider.py
+class MyVendorSMSProvider(NotificationProvider):
     @property
     def name(self) -> str:
-        return "my_provider"
+        return "myvendor_sms"  # vendor_channel — see "channel vs. provider.name" above
 
     @property
     def supported_channels(self) -> list[NotificationChannel]:
@@ -207,7 +217,7 @@ import notifyfork
 
 @notifyfork.provider
 class TelegramProvider:
-    name = "telegram_bot"
+    name = "telegram"  # vendor == channel here (like "slack"), no _channel suffix needed
     supported_channels = ["telegram"]  # channel isn't a closed enum — any string works
 
     def supports(self, channel):
@@ -297,6 +307,16 @@ Essa é toda a API. Seleção de provider, renderização de template e retry ac
 | Slack | Slack Web API | Local (texto simples ou Block Kit) |
 
 Mais de um provider por canal cai um pro outro automaticamente (veja "Confiabilidade"). Adicionar um provider é uma classe nova — veja "Adicionando um provider" abaixo. `channel` também não fica preso a essa tabela; dá pra registrar um provider pra um canal que o NotifyFork nem conhece.
+
+**`channel` genérico vs. explícito**: todo provider nativo aceita `channel` de duas formas — a genérica (`"whatsapp"`, `"email"`, `"sms"`) e o próprio nome `vendor_canal` (`twilio_whatsapp`, `sendgrid_email`, `twilio_sms`...), porque `supported_channels` lista as duas:
+
+```python
+notifyfork.send(channel="whatsapp", ...)         # genérico — elegível pra fallback se
+                                                  # outro provider de WhatsApp for registrado
+notifyfork.send(channel="twilio_whatsapp", ...)  # explícito — fixa a Twilio, sem fallback
+```
+
+Usa o genérico quando quer que o NotifyFork escolha/caia pro próximo entre os providers registrados pro canal (ordenado por `DEFAULT_PROVIDER_ORDER` / `NOTIFYFORK_PROVIDER_ORDER`, gravado em `notification.provider_used`). Usa a forma explícita `vendor_canal` quando precisa daquele vendor especificamente — ex: um template em modo **EXTERNO** guarda um ID específico do vendor (Content SID da Twilio, Dynamic Template ID do SendGrid) que só o provider que emitiu entende, então fixar o canal só documenta esse travamento em vez de sugerir um fallback que não funcionaria de qualquer jeito. `slack` é o único provider sem uma forma explícita separada: só existe uma integração Slack (a Web API), e vendor e canal já são a mesma palavra, então `slack_slack` não acrescentaria nada. Veja os [exemplos](examples/) rodáveis com as duas formas em contexto.
 
 ---
 
@@ -394,10 +414,10 @@ Os webhooks de confirmação de entrega (`notifyfork.api.webhooks`) são a únic
 **Dentro da lib** — herda de `NotificationProvider` e registra no `container/providers.py`:
 
 ```python
-class MeuProvider(NotificationProvider):
+class MeuVendorSMSProvider(NotificationProvider):
     @property
     def name(self) -> str:
-        return "meu_provider"
+        return "meuvendor_sms"  # vendor_canal — veja "channel vs. provider.name" acima
 
     @property
     def supported_channels(self) -> list[NotificationChannel]:
@@ -416,7 +436,7 @@ import notifyfork
 
 @notifyfork.provider
 class TelegramProvider:
-    name = "telegram_bot"
+    name = "telegram"  # vendor == canal aqui (igual "slack"), sem sufixo _canal
     supported_channels = ["telegram"]  # channel não é enum fechado, qualquer string serve
 
     def supports(self, channel):

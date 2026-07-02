@@ -1,6 +1,22 @@
 """
 Send shipment notification via WhatsApp (Twilio Content Template — EXTERNAL mode).
-Template: order_shipped_wa — body is your Twilio Content SID (HXxxx)
+
+Provider: NotifyFork's only WhatsApp backend today is Twilio
+(TwilioWhatsAppProvider, registered as "twilio_whatsapp" — see
+notifyfork/core/infrastructure/providers/whatsapp_provider.py).
+
+channel below is set to the explicit "twilio_whatsapp" rather than the
+generic "whatsapp" — both work (the provider's supported_channels lists
+both), but this template is EXTERNAL mode (Twilio Content SID), so it's
+vendor-locked anyway: pinning the channel makes that explicit instead of
+implying a fallback that couldn't work. If you register a second WhatsApp
+vendor later (e.g. Evolution API) with a LOCAL-only template, use the
+generic channel="whatsapp" there to get automatic fallback.
+
+Template: order_shipped_wa — its DB "body" column holds the Twilio Content SID
+(HXxxx), NOT literal message text. The provider never renders it locally — it
+reads it through NotificationTemplate.external_template_id and hands the SID
+straight to Twilio's ContentTemplate API, which renders it on their end.
 
 Variable mapping: name→1, tracking_code→2, carrier→3 (positional Twilio vars)
 
@@ -23,7 +39,7 @@ recipient = "+5511999990002"  # replace with opted-in number
 print(f"→ WhatsApp shipment alert to {recipient}")
 task = notifyfork.send(
     recipient=recipient,
-    channel="whatsapp",
+    channel="twilio_whatsapp",  # explicit vendor — no fallback, matches this EXTERNAL-mode template
     template_id="order_shipped_wa",
     notification_type="transactional",
     context={

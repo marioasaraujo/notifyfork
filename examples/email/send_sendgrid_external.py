@@ -1,5 +1,14 @@
 """
 Send via SendGrid Dynamic Template (EXTERNAL mode).
+
+Provider: SendGrid specifically (SendGridEmailProvider, "sendgrid_email") —
+NOT interchangeable with resend_email or smtp_email like send_order_confirmed.py
+is. The template's "body" holds a SendGrid Dynamic Template ID, which only
+SendGrid's API understands, so channel below is set to the explicit
+"sendgrid_email" (not the generic "email") — pinning the vendor here isn't
+just stylistic, it's the only channel that could work with an EXTERNAL-mode
+SendGrid template anyway.
+
 Template: order_confirmed_sg — body is your SendGrid template ID (d-xxxx)
 
 Variable mapping stored in the DB translates context keys:
@@ -22,7 +31,7 @@ recipient = "customer@example.com"
 print(f"→ Email via SendGrid Dynamic Template to {recipient}")
 task = notifyfork.send(
     recipient=recipient,
-    channel="email",
+    channel="sendgrid_email",  # explicit vendor — required, see docstring
     template_id="order_confirmed_sg",
     notification_type="transactional",
     context={

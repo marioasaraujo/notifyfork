@@ -1,5 +1,11 @@
 """
 Send a system error alert to a Slack channel.
+
+Provider: Slack Web API (SlackProvider, registered as "slack" — see
+notifyfork/core/infrastructure/providers/slack_provider.py). Unlike the other
+built-ins (twilio_sms, sendgrid_email...) this one has no "_channel" suffix:
+vendor and channel are the same word here, so "slack_slack" would add nothing.
+
 Template: system_error_slack — LOCAL mode with Markdown blocks
 
 The recipient is a Slack channel ID (C012AB3CD) or user ID.

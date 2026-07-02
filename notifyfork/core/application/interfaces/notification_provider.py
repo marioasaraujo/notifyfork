@@ -29,7 +29,7 @@ class NotificationProvider(ABC):
 
     @property
     @abstractmethod
-    def supported_channels(self) -> list[NotificationChannel]: ...
+    def supported_channels(self) -> list[NotificationChannel | str]: ...
 
     @abstractmethod
     async def send_with_template(
@@ -39,5 +39,5 @@ class NotificationProvider(ABC):
         context: dict[str, Any],
     ) -> ProviderResult: ...
 
-    def supports(self, channel: NotificationChannel) -> bool:
+    def supports(self, channel: NotificationChannel | str) -> bool:
         return channel in self.supported_channels

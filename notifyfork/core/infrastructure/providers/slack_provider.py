@@ -31,6 +31,9 @@ class SlackProvider(NotificationProvider):
 
     @property
     def supported_channels(self) -> list[NotificationChannel]:
+        # self.name == "slack" == NotificationChannel.SLACK.value already —
+        # generic and vendor-specific channel are the same string here, so
+        # there's no second entry to add (unlike twilio_whatsapp, sendgrid_email...).
         return [NotificationChannel.SLACK]
 
     async def send_with_template(

@@ -50,7 +50,10 @@ class SendGridEmailProvider(NotificationProvider):
 
     @property
     def supported_channels(self) -> list[NotificationChannel]:
-        return [NotificationChannel.EMAIL]
+        # "email" — generic, eligible for fallback to resend_email/smtp_email
+        # (LOCAL-mode templates only). "sendgrid_email" (== self.name) — pins
+        # this vendor, required for EXTERNAL-mode templates (Dynamic Template ID).
+        return [NotificationChannel.EMAIL, self.name]
 
     async def send_with_template(
         self,

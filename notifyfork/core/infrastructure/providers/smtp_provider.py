@@ -33,7 +33,9 @@ class SMTPEmailProvider(NotificationProvider):
 
     @property
     def supported_channels(self) -> list[NotificationChannel]:
-        return [NotificationChannel.EMAIL]
+        # "email" — generic, eligible for fallback to sendgrid_email/resend_email.
+        # "smtp_email" (== self.name) — pins this exact vendor.
+        return [NotificationChannel.EMAIL, self.name]
 
     async def send_with_template(
         self,
