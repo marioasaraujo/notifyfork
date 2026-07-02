@@ -53,15 +53,17 @@ That's the whole API. Provider selection, template rendering, and retry all happ
 
 ### Channels & providers
 
-| Channel | Provider | Template mode |
-|---------|----------|---------------|
-| SMS | Twilio | Local (free-form text) |
-| Email | SendGrid | Local **or** External (Dynamic Templates) |
-| Email | Resend | Local (HTML rendered here) |
-| Email | SMTP (any server) | Local (HTML rendered here) |
-| WhatsApp | Twilio | Local (sandbox) **or** External (Content Templates) |
-| Push | Firebase Cloud Messaging | Local (title + body) |
-| Slack | Slack Web API | Local (plain or Block Kit) |
+| Channel | Provider | Template mode | Tested in production |
+|---------|----------|---------------|:---------------------:|
+| SMS | Twilio | Local (free-form text) | ⬜ |
+| Email | SendGrid | Local **or** External (Dynamic Templates) | ⬜ |
+| Email | Resend | Local (HTML rendered here) | ✅ |
+| Email | SMTP (any server) | Local (HTML rendered here) | ⬜ |
+| WhatsApp | Twilio | Local (sandbox) **or** External (Content Templates) | ✅ |
+| Push | Firebase Cloud Messaging | Local (title + body) | ⬜ |
+| Slack | Slack Web API | Local (plain or Block Kit) | ⬜ |
+
+✅ = confirmed working against the real provider API in a live deployment. ⬜ = implemented and unit-tested, but not yet confirmed outside sandbox/mocked tests — should work, just hasn't been battle-tested by us yet.
 
 Multiple providers per channel fall back on each other automatically (see "Reliability"). Adding a provider is one new class — see "Adding a provider" below. `channel` isn't limited to this table either; you can register a provider for a channel NotifyFork doesn't ship at all.
 
@@ -296,15 +298,17 @@ Essa é toda a API. Seleção de provider, renderização de template e retry ac
 
 ### Canais e providers
 
-| Canal | Provider | Modo de template |
-|-------|----------|-----------------|
-| SMS | Twilio | Local (texto livre) |
-| E-mail | SendGrid | Local **ou** Externo (Dynamic Templates) |
-| E-mail | Resend | Local (HTML renderizado aqui) |
-| E-mail | SMTP (qualquer servidor) | Local (HTML renderizado aqui) |
-| WhatsApp | Twilio | Local (sandbox) **ou** Externo (Content Templates) |
-| Push | Firebase Cloud Messaging | Local (título + body) |
-| Slack | Slack Web API | Local (texto simples ou Block Kit) |
+| Canal | Provider | Modo de template | Testado em produção |
+|-------|----------|-----------------|:--------------------:|
+| SMS | Twilio | Local (texto livre) | ⬜ |
+| E-mail | SendGrid | Local **ou** Externo (Dynamic Templates) | ⬜ |
+| E-mail | Resend | Local (HTML renderizado aqui) | ✅ |
+| E-mail | SMTP (qualquer servidor) | Local (HTML renderizado aqui) | ⬜ |
+| WhatsApp | Twilio | Local (sandbox) **ou** Externo (Content Templates) | ✅ |
+| Push | Firebase Cloud Messaging | Local (título + body) | ⬜ |
+| Slack | Slack Web API | Local (texto simples ou Block Kit) | ⬜ |
+
+✅ = confirmado funcionando contra a API real do provider, em produção de verdade. ⬜ = implementado e coberto por teste unitário, mas ainda não confirmado fora de sandbox/mocks — deve funcionar, só ainda não foi testado com tráfego real por nós.
 
 Mais de um provider por canal cai um pro outro automaticamente (veja "Confiabilidade"). Adicionar um provider é uma classe nova — veja "Adicionando um provider" abaixo. `channel` também não fica preso a essa tabela; dá pra registrar um provider pra um canal que o NotifyFork nem conhece.
 
