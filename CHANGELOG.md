@@ -18,6 +18,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `event_router.py`, `EventType` and `EVENT_ROUTING_TABLE`. That layer only translated an `event_type` string into `channel` + `template_id` before queueing, and the queue already accepted those fields directly. Every caller already knows the channel and template it wants, so there was nothing left for the router to decide
 - `send_event()`, replaced by `send()`
 
+### Fixed
+- `FirebasePushProvider` never called `firebase_admin.initialize_app()` — the container only checked that `FIREBASE_CREDENTIALS_PATH` was set to decide whether to register the provider, then dropped the value instead of using it. Every `notifyfork.send(channel="push", ...)` (or `"firebase_push"`) failed with "The default Firebase app does not exist", regardless of `.env` config. The container now passes the credentials path into the provider, which initializes the default Firebase app from it (skipping re-init if one already exists in the process)
+
 ## [0.1.0] - 2024-06-01
 
 ### Added
