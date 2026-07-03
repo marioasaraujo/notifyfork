@@ -136,7 +136,7 @@ def _build_providers() -> list[NotificationProvider]:
 
     if firebase_creds:
         from notifyfork.core.infrastructure.providers.firebase_provider import FirebasePushProvider
-        providers.append(FirebasePushProvider())
+        providers.append(FirebasePushProvider(firebase_creds))
         logger.info("Provider registered: firebase_push")
     else:
         logger.warning("firebase_push skipped — missing FIREBASE_CREDENTIALS_PATH")

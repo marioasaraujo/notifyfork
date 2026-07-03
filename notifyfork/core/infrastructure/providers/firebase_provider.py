@@ -2,7 +2,7 @@ import logging
 from typing import Any
 
 import firebase_admin
-from firebase_admin import messaging
+from firebase_admin import credentials, messaging
 from firebase_admin.exceptions import FirebaseError
 
 from notifyfork.core.application.interfaces.notification_provider import NotificationProvider, ProviderResult
@@ -18,6 +18,15 @@ class FirebasePushProvider(NotificationProvider):
 
     Recipient is expected to be a valid FCM device token.
     """
+
+    def __init__(self, credentials_path: str) -> None:
+        # firebase_admin raises if initialize_app() is called twice on the
+        # default app — guard against that when multiple Container instances
+        # (or test re-imports) build a provider against the same process.
+        try:
+            firebase_admin.get_app()
+        except ValueError:
+            firebase_admin.initialize_app(credentials.Certificate(credentials_path))
 
     @property
     def name(self) -> str:
