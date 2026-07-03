@@ -13,6 +13,7 @@ def pytest_configure():
             INSTALLED_APPS=[
                 "django.contrib.contenttypes",
                 "django.contrib.auth",
+                "django.contrib.admin",
                 "rest_framework",
                 "notifyfork.core.infrastructure",
             ],
