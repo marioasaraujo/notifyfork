@@ -9,6 +9,7 @@ One API. Any channel. Send to SMS, Email, WhatsApp, Push, and Slack,<br/>
 delivered asynchronously, retried safely, logged in structured JSON.</p>
 
 [![PyPI version](https://img.shields.io/pypi/v/notifyfork?style=flat-square&color=2c5364)](https://pypi.org/project/notifyfork)
+[![codecov](https://img.shields.io/codecov/c/github/marioasaraujo/notifyfork?style=flat-square&color=2c5364)](https://codecov.io/gh/marioasaraujo/notifyfork)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-5.x-092E20?style=flat-square&logo=django)](https://djangoproject.com)
 [![Celery](https://img.shields.io/badge/Celery-5.x-37814A?style=flat-square&logo=celery)](https://docs.celeryq.dev)
@@ -60,7 +61,7 @@ That's the whole API. Provider selection, template rendering, and retry all happ
 | Email | Resend | Local (HTML rendered here) | ✅ |
 | Email | SMTP (any server) | Local (HTML rendered here) | ⬜ |
 | WhatsApp | Twilio | Local (sandbox) **or** External (Content Templates) | ✅ |
-| Push | Firebase Cloud Messaging | Local (title + body) | ⬜ |
+| Push | Firebase Cloud Messaging | Local (title + body) | ✅ |
 | Slack | Slack Web API | Local (plain or Block Kit) | ⬜ |
 
 ✅ = confirmed working against the real provider API in a live deployment. ⬜ = implemented and unit-tested, but not yet confirmed outside sandbox/mocked tests — should work, just hasn't been battle-tested by us yet.
@@ -305,7 +306,7 @@ Essa é toda a API. Seleção de provider, renderização de template e retry ac
 | E-mail | Resend | Local (HTML renderizado aqui) | ✅ |
 | E-mail | SMTP (qualquer servidor) | Local (HTML renderizado aqui) | ⬜ |
 | WhatsApp | Twilio | Local (sandbox) **ou** Externo (Content Templates) | ✅ |
-| Push | Firebase Cloud Messaging | Local (título + body) | ⬜ |
+| Push | Firebase Cloud Messaging | Local (título + body) | ✅ |
 | Slack | Slack Web API | Local (texto simples ou Block Kit) | ⬜ |
 
 ✅ = confirmado funcionando contra a API real do provider, em produção de verdade. ⬜ = implementado e coberto por teste unitário, mas ainda não confirmado fora de sandbox/mocks — deve funcionar, só ainda não foi testado com tráfego real por nós.

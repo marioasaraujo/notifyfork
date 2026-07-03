@@ -19,7 +19,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `send_event()`, replaced by `send()`
 
 ### Fixed
-- `FirebasePushProvider` never called `firebase_admin.initialize_app()` — the container only checked that `FIREBASE_CREDENTIALS_PATH` was set to decide whether to register the provider, then dropped the value instead of using it. Every `notifyfork.send(channel="push", ...)` (or `"firebase_push"`) failed with "The default Firebase app does not exist", regardless of `.env` config. The container now passes the credentials path into the provider, which initializes the default Firebase app from it (skipping re-init if one already exists in the process)
+- `FirebasePushProvider` never called `firebase_admin.initialize_app()` — the container only checked that `FIREBASE_CREDENTIALS_PATH` was set to decide whether to register the provider, then dropped the value instead of using it. Every `notifyfork.send(channel="push", ...)` (or `"firebase_push"`) failed with "The default Firebase app does not exist", regardless of `.env` config. The container now passes the credentials path into the provider, which initializes the default Firebase app from it (skipping re-init if one already exists in the process). Confirmed fixed against a real FCM device token in production
+- `JSONFormatter` (structured logging) filtered "extra" fields by checking `logging.LogRecord.__dict__` — the *class* dict, which is basically empty since every standard attribute (`msg`, `args`, `exc_info`, ...) is set on the *instance* in `__init__`. So none of them were filtered, and any log call with `exc_info=True` (or `logger.exception(...)`) leaked the raw `exc_info` tuple — containing a traceback object — into the dict passed to `json.dumps()`, crashing with `TypeError` and losing the log line entirely. Now filters against the actual instance attributes of a reference `LogRecord`
 
 ## [0.1.0] - 2024-06-01
 

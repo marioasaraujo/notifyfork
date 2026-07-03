@@ -3,6 +3,14 @@ import sys
 from typing import Any
 import json
 
+# Instance attributes every LogRecord carries (name, msg, args, exc_info, ...).
+# These live on the instance, not the class, so comparing against
+# logging.LogRecord.__dict__ (the class dict) would keep every single one of
+# them as a false "extra" — including exc_info, whose traceback object isn't
+# JSON-serializable and crashes json.dumps() the moment anyone logs with
+# exc_info=True or uses logger.exception(...).
+_RESERVED_RECORD_ATTRS = frozenset(vars(logging.makeLogRecord({})).keys())
+
 
 class JSONFormatter(logging.Formatter):
     """
@@ -18,13 +26,12 @@ class JSONFormatter(logging.Formatter):
             "timestamp": self.formatTime(record),
         }
 
-        if hasattr(record, "__dict__"):
-            extras = {
-                k: v
-                for k, v in record.__dict__.items()
-                if k not in logging.LogRecord.__dict__ and not k.startswith("_")
-            }
-            log.update(extras)
+        extras = {
+            k: v
+            for k, v in record.__dict__.items()
+            if k not in _RESERVED_RECORD_ATTRS and not k.startswith("_")
+        }
+        log.update(extras)
 
         if record.exc_info:
             log["exception"] = self.formatException(record.exc_info)
